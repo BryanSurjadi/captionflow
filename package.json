@@ -1,0 +1,18 @@
+{
+  "name": "captionflow",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev:web": "npm run dev --workspace=web",
+    "dev:api": "npm run dev --workspace=@captionflow/api",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ]
+}
