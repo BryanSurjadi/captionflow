@@ -5,7 +5,13 @@
   "scripts": {
     "dev:web": "npm run dev --workspace=web",
     "dev:api": "npm run dev --workspace=@captionflow/api",
-    "build": "npm run build --workspaces --if-present"
+    "build": "npm run build --workspaces --if-present",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres",
+    "db:migrate": "npm run db:migrate --workspace=@captionflow/api",
+    "db:studio": "npm run db:studio --workspace=@captionflow/api",
+    "db:generate": "npm run db:generate --workspace=@captionflow/api"
   },
   "keywords": [],
   "author": "",

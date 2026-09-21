@@ -1,8 +1,8 @@
-# Local-First Auto-Caption Generator — Project Specification
+# Auto-Caption Generator — Project Specification
 
 ## 1. Purpose and scope
 
-Build a local-first web application for adding burned-in captions to finished, short salon videos. The primary use case is a roughly 30-second vertical MP4 prepared for Reels or TikTok. A user uploads one video, gets an Indonesian-first transcript with word timing, corrects captions and timing, styles them, previews changes immediately, and exports a captioned MP4. The core workflow runs locally without a paid AI API or cloud media storage. The design should remain practical to deploy later as a portfolio showcase.
+Build a local-focused web application for adding burned-in captions to finished, short salon videos. The primary use case is a roughly 30-second vertical MP4 prepared for Reels or TikTok. A user uploads one video, gets an Indonesian-first transcript with word timing, corrects captions and timing, styles them, previews changes immediately, and exports a captioned MP4. The core workflow runs locally without a paid AI API or cloud media storage. The design should remain practical to deploy later as a portfolio showcase.
 
 The main product promise is **accurate, editable synchronization** with reusable styling. Do not build a general video editor: the source video is already assembled, and any thumbnail or opening design can be handled outside this tool.
 
@@ -181,6 +181,8 @@ Return clear statuses such as `UPLOADING`, `TRANSCRIBING`, `READY`, `RENDERING`,
 
 ## 12. Implementation order
 
+The detailed implementation checkpoints are maintained in [DEVELOPMENT_ROADMAP.md](./DEVELOPMENT_ROADMAP.md).
+
 1. Establish Next.js, Express, Prisma/PostgreSQL, local storage, FFmpeg/FFprobe, and the small Python transcription entry point.
 2. Complete upload, probe, transcription, normalized word JSON, basic grouping, and status polling.
 3. Build the video editor: synchronized preview, correction, block timeline editing, grouping, autosave, and clear error states.
@@ -189,3 +191,4 @@ Return clear statuses such as `UPLOADING`, `TRANSCRIBING`, `READY`, `RENDERING`,
 6. Add optional account flow and persistent presets, then expiration checks and physical cleanup.
 
 Use real salon sample clips to judge Indonesian/English transcription and timing. Tune the `faster-whisper` model/compute settings to the available CPU or GPU after measuring accuracy and processing time; do not assume a large CUDA model is practical on every machine.
+

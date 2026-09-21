@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SessionStatus {
+  UPLOADING
+  UPLOADED
+  TRANSCRIBING
+  READY
+  RENDERING
+  FAILED
+}
+
+model CaptionSession {
+  id              String        @id @default(uuid())
+  accessTokenHash String        @unique
+  status          SessionStatus @default(UPLOADING)
+  sourceFileName  String
+  sourcePath      String?
+  durationSeconds Float?
+  width           Int?
+  height          Int?
+  frameRate       Float?
+  videoCodec      String?
+  captionData     Json?
+  errorMessage    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  lastActivityAt  DateTime      @default(now())
+
+  @@index([lastActivityAt])
+}
+
+
