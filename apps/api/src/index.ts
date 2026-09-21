@@ -6,7 +6,12 @@ import { sessionRouter } from "./sessions/session.routes.js";
 const app = express();
 const port = Number(process.env.PORT ?? 4000);
 
-app.use(cors({ origin: process.env.WEB_ORIGIN ?? "http://localhost:3000" }));
+app.use(
+  cors({
+    origin: process.env.WEB_ORIGIN ?? "http://localhost:3000",
+    credentials: true,
+  }),
+);
 app.use(express.json());
 
 app.get("/health", (_request, response) => {

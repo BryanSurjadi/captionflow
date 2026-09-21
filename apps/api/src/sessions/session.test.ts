@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { parseByteRange } from "./http-range.js";
 import { parseFrameRate } from "./media.js";
+import { createSessionCookieValue, readSessionAccessToken, sessionCookieName } from "./session-cookie.js";
 
 test("parses normal, open, and suffix byte ranges", () => {
   assert.deepEqual(parseByteRange("bytes=10-19", 100), { start: 10, end: 19 });
@@ -13,4 +14,13 @@ test("parses normal, open, and suffix byte ranges", () => {
 test("parses FFprobe frame-rate fractions", () => {
   assert.equal(parseFrameRate("30000/1001").toFixed(3), "29.970");
   assert.equal(parseFrameRate("0/0"), 0);
+});
+
+test("reads only the cookie belonging to the requested session", () => {
+  const value = createSessionCookieValue("session-1", "secret-token");
+  const header = `theme=dark; ${sessionCookieName}=${value}`;
+
+  assert.equal(readSessionAccessToken(header, "session-1"), "secret-token");
+  assert.equal(readSessionAccessToken(header, "session-2"), undefined);
+  assert.equal(readSessionAccessToken(undefined, "session-1"), undefined);
 });

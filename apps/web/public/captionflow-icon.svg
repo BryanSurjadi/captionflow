@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">CaptionFlow</title>
+  <g transform="skewY(-8)">
+    <rect x="8" y="9" width="48" height="14" rx="6" fill="#176BFF" />
+    <rect x="8" y="25" width="48" height="14" rx="6" fill="#77A7FF" />
+    <rect x="8" y="41" width="48" height="14" rx="6" fill="#FFD84D" />
+  </g>
+</svg>

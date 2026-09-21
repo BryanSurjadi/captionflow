@@ -7,6 +7,12 @@ import type { Request, RequestHandler, Response } from "express";
 import { prisma } from "../db.js";
 import { parseByteRange } from "./http-range.js";
 import { InvalidVideoError, probeVideo } from "./media.js";
+import {
+  createSessionCookieValue,
+  readSessionAccessToken,
+  sessionCookieName,
+} from "./session-cookie.js";
+import { startTranscription } from "./transcription.js";
 
 const sessionTtlMilliseconds = 60 * 60 * 1000;
 export const storageRoot = path.resolve(process.cwd(), process.env.STORAGE_DIR ?? "../../storage");
@@ -52,10 +58,8 @@ export const createSession: RequestHandler = async (request, response) => {
       },
     });
 
-    response.status(201).json({
-      session: publicSession(session),
-      accessToken,
-    });
+    setSessionCookie(response, id, accessToken);
+    response.status(201).json({ session: publicSession(session) });
   } catch (error) {
     await Promise.allSettled([
       rm(upload.path, { force: true }),
@@ -67,8 +71,47 @@ export const createSession: RequestHandler = async (request, response) => {
 
 export const getSession: RequestHandler = async (request, response) => {
   try {
-    const session = await authorizedSession(request);
+    const { session } = await authorizedSession(request);
     response.json({ session: publicSession(session) });
+  } catch (error) {
+    sendError(response, error);
+  }
+};
+
+export const transcribeSession: RequestHandler = async (
+  request,
+  response,
+) => {
+  try {
+    const { session, accessToken } = await authorizedSession(request);
+
+    if (
+      session.status !== SessionStatus.UPLOADED &&
+      session.status !== SessionStatus.FAILED
+    ) {
+      throw new SessionHttpError(
+        409,
+        `Cannot start transcription while session is ${session.status}`,
+      );
+    }
+
+    const sourcePath = path.join(
+      storageRoot,
+      "sessions",
+      session.id,
+      "source.mp4",
+    );
+
+    const updatedSession = await startTranscription(
+      session.id,
+      sourcePath,
+    );
+
+    setSessionCookie(response, session.id, accessToken);
+
+    response.status(202).json({
+      session: publicSession(updatedSession),
+    });
   } catch (error) {
     sendError(response, error);
   }
@@ -76,7 +119,7 @@ export const getSession: RequestHandler = async (request, response) => {
 
 export const streamSourceVideo: RequestHandler = async (request, response) => {
   try {
-    const session = await authorizedSession(request);
+    const { session, accessToken } = await authorizedSession(request);
     const sourcePath = path.join(storageRoot, "sessions", session.id, "source.mp4");
     const sourceStat = await stat(sourcePath);
     const rangeHeader = request.header("range");
@@ -85,6 +128,7 @@ export const streamSourceVideo: RequestHandler = async (request, response) => {
       where: { id: session.id },
       data: { lastActivityAt: new Date() },
     });
+    setSessionCookie(response, session.id, accessToken);
 
     if (!rangeHeader) {
       response.writeHead(200, {
@@ -118,8 +162,7 @@ async function authorizedSession(request: Request) {
   const sessionId = request.params.id;
   if (typeof sessionId !== "string") throw new SessionHttpError(400, "Invalid session ID");
 
-  const authorization = request.header("authorization");
-  const accessToken = authorization?.startsWith("Bearer ") ? authorization.slice(7) : undefined;
+  const accessToken = readSessionAccessToken(request.header("cookie"), sessionId);
   if (!accessToken) throw new SessionHttpError(401, "Session access token required");
 
   const session = await prisma.captionSession.findFirst({
@@ -134,11 +177,21 @@ async function authorizedSession(request: Request) {
     throw new SessionHttpError(410, "Session expired");
   }
 
-  return session;
+  return { session, accessToken };
 }
 
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
+}
+
+function setSessionCookie(response: Response, sessionId: string, accessToken: string) {
+  response.cookie(sessionCookieName, createSessionCookieValue(sessionId, accessToken), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: sessionTtlMilliseconds,
+    path: `/sessions/${sessionId}`,
+  });
 }
 
 function publicSession(session: CaptionSession) {
@@ -152,6 +205,7 @@ function publicSession(session: CaptionSession) {
     frameRate: session.frameRate,
     videoCodec: session.videoCodec,
     captionData: session.captionData,
+    errorMessage: session.errorMessage,
     createdAt: session.createdAt,
     lastActivityAt: session.lastActivityAt,
     expiresAt: new Date(session.lastActivityAt.getTime() + sessionTtlMilliseconds),
@@ -171,4 +225,3 @@ function sendError(response: Response, error: unknown) {
   console.error(error);
   response.status(500).json({ error: "Unable to process session" });
 }
-
