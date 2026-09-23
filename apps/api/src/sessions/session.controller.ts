@@ -1,4 +1,4 @@
-import { SessionStatus, type CaptionSession } from "@prisma/client";
+import { SessionStatus, type CaptionSession, type Prisma } from "@prisma/client";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { mkdir, rename, rm, stat } from "node:fs/promises";
@@ -6,6 +6,7 @@ import path from "node:path";
 import type { Request, RequestHandler, Response } from "express";
 import { prisma } from "../db.js";
 import { parseByteRange } from "./http-range.js";
+import { validateCaptionData } from "./caption-grouping.js";
 import { InvalidVideoError, probeVideo } from "./media.js";
 import {
   createSessionCookieValue,
@@ -29,7 +30,6 @@ class SessionHttpError extends Error {
 
 export const createSession: RequestHandler = async (request, response) => {
   const upload = request.file;
-  console.log("isi file",upload)
   if (!upload) {
     response.status(400).json({ error: "A valid MP4 video is required" });
     return;
@@ -65,6 +65,34 @@ export const createSession: RequestHandler = async (request, response) => {
       rm(upload.path, { force: true }),
       rm(sessionDirectory, { force: true, recursive: true }),
     ]);
+    sendError(response, error);
+  }
+};
+
+export const updateSession: RequestHandler = async (request, response) => {
+  try {
+    const { session, accessToken } = await authorizedSession(request);
+    if (session.status !== SessionStatus.READY) {
+      throw new SessionHttpError(409, "Captions can only be edited after transcription finishes");
+    }
+
+    let captionData;
+    try {
+      captionData = validateCaptionData(request.body?.captionData);
+    } catch (error) {
+      throw new SessionHttpError(400, error instanceof Error ? error.message : "Caption data is invalid");
+    }
+    const updatedSession = await prisma.captionSession.update({
+      where: { id: session.id },
+      data: {
+        captionData: captionData as unknown as Prisma.InputJsonObject,
+        lastActivityAt: new Date(),
+      },
+    });
+
+    setSessionCookie(response, session.id, accessToken);
+    response.json({ session: publicSession(updatedSession) });
+  } catch (error) {
     sendError(response, error);
   }
 };

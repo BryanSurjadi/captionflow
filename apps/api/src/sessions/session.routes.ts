@@ -8,6 +8,7 @@ import {
   getSession,
   streamSourceVideo,
   transcribeSession,
+  updateSession,
   temporaryUploadDirectory,
 } from "./session.controller.js";
 
@@ -31,6 +32,7 @@ export const sessionRouter = Router();
 
 sessionRouter.post("/", upload.single("video"), createSession);
 sessionRouter.get("/:id", getSession);
+sessionRouter.patch("/:id", updateSession);
 sessionRouter.post("/:id/transcription", transcribeSession);
 sessionRouter.get("/:id/source", streamSourceVideo);
 
@@ -45,5 +47,4 @@ const handleUploadError: ErrorRequestHandler = (error, _request, response, next)
 };
 
 sessionRouter.use(handleUploadError);
-
 

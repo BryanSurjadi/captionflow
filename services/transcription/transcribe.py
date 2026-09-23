@@ -29,6 +29,7 @@ def main() -> None:
             "start": round(word.start, 3),
             "end": round(word.end, 3),
             "probability": round(word.probability, 4),
+            "segmentId": segment.id,
         }
         for segment in segments
         for word in (segment.words or [])

@@ -1,18 +1,32 @@
 export const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 export interface TranscriptWord {
+  id: string;
   text: string;
   start: number;
   end: number;
   probability: number;
+  hidden: boolean;
+  segmentId?: number;
+  edited?: boolean;
+}
+
+export interface CaptionGroup {
+  id: string;
+  wordIds: string[];
+  start: number;
+  end: number;
 }
 
 export interface CaptionData {
   version: number;
   language: string;
+  languageProbability: number;
   durationSeconds: number;
   text: string;
   words: TranscriptWord[];
+  groups: CaptionGroup[];
+  emphasis: [];
 }
 
 export interface Session {
@@ -86,6 +100,19 @@ export async function startTranscription(id: string) {
     );
   }
 
+  return result.session;
+}
+
+export async function saveCaptionData(id: string, captionData: CaptionData, signal?: AbortSignal) {
+  const response = await fetch(`${apiUrl}/sessions/${id}`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ captionData }),
+    signal,
+  });
+  const result = (await response.json()) as { session?: Session; error?: string };
+  if (!response.ok || !result.session) throw new Error(result.error ?? "Unable to save captions.");
   return result.session;
 }
 

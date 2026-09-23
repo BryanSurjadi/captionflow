@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getSession, sessionVideoUrl, startTranscription, type Session } from "@/lib/api";
+import { CaptionEditor } from "./caption-editor";
 
 export default function SessionPreviewPage() {
   const { id } = useParams<{ id: string }>();
@@ -96,6 +97,10 @@ export default function SessionPreviewPage() {
     );
   }
 
+  if (session.status === "READY" && session.captionData?.groups?.length) {
+    return <CaptionEditor session={session} />;
+  }
+
   return (
     <main className="editor-shell">
       <header className="editor-header">
@@ -150,10 +155,22 @@ export default function SessionPreviewPage() {
 
             {session.status === "READY" && session.captionData ? (
               <>
-                <strong>Transcript ready</strong>
-                <p className="transcript-preview">
-                  {session.captionData.text}
-                </p>
+                <strong>Caption groups ready</strong>
+                {session.captionData.groups?.length ? (
+                  <div className="caption-group-list">
+                    {session.captionData.groups.map((group) => (
+                      <div key={group.id}>
+                        <small>{formatTimestamp(group.start)} – {formatTimestamp(group.end)}</small>
+                        <p>{group.wordIds
+                          .map((wordId) => session.captionData?.words.find((word) => word.id === wordId)?.text)
+                          .filter(Boolean)
+                          .join(" ")}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="transcript-preview">{session.captionData.text}</p>
+                )}
               </>
             ) : session.status === "TRANSCRIBING" ? (
               <>
@@ -204,5 +221,11 @@ function formatDuration(seconds: number | null) {
   const totalSeconds = Math.round(seconds);
   const minutes = Math.floor(totalSeconds / 60);
   const remainingSeconds = (totalSeconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${remainingSeconds}`;
+}
+
+function formatTimestamp(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = (seconds % 60).toFixed(2).padStart(5, "0");
   return `${minutes}:${remainingSeconds}`;
 }

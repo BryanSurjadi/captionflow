@@ -2,6 +2,7 @@ import { SessionStatus, type Prisma } from "@prisma/client";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { prisma } from "../db.js";
+import { buildCaptionData } from "./caption-grouping.js";
 
 const transcriptionDirectory = path.resolve(
   process.cwd(),
@@ -78,14 +79,14 @@ export async function startTranscription(
     if (finished) return;
 
     try {
-      const captionData = parseCaptionData(stdout);
+      const captionData = buildCaptionData(JSON.parse(stdout) as unknown);
       finished = true;
 
       await prisma.captionSession.update({
         where: { id: sessionId },
         data: {
           status: SessionStatus.READY,
-          captionData,
+          captionData: captionData as unknown as Prisma.InputJsonObject,
           errorMessage: null,
           lastActivityAt: new Date(),
         },
@@ -119,24 +120,4 @@ export async function startTranscription(
   }
 
   return session;
-}
-
-function parseCaptionData(output: string): Prisma.InputJsonObject {
-  const transcript: unknown = JSON.parse(output);
-
-  if (
-    !transcript ||
-    typeof transcript !== "object" ||
-    !("words" in transcript) ||
-    !Array.isArray(transcript.words)
-  ) {
-    throw new Error("Python returned invalid transcript JSON");
-  }
-
-  return {
-    ...(transcript as Prisma.InputJsonObject),
-    version: 1,
-    groups: [],
-    emphasis: [],
-  };
 }
